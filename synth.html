@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>COSMIC SYNTH</title>
+<style>
+:root{
+  --bg:#08090f;--surface:#0d0e1a;--surface2:#121320;--border:#1e2040;
+  --accent:#00e5ff;--accent2:#7c4dff;--red:#ff3d71;--green:#00e676;--orange:#ff9100;
+  --text:#c8d0f0;--text2:#5a6090;--cell-n:#0a0b18;--cell-s:#070814;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;overflow:hidden;height:100vh;display:flex;flex-direction:column;user-select:none;}
+
+/* ── TOP NAV ── */
+#nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;height:42px;background:var(--surface);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+#logo{font-size:14px;letter-spacing:6px;color:var(--accent);text-shadow:0 0 16px var(--accent)44;}
+#transport{display:flex;align-items:center;gap:8px;}
+.tBtn{
+  padding:4px 12px;font-size:10px;letter-spacing:1px;border-radius:3px;cursor:pointer;
+  font-family:'Courier New',monospace;border:1px solid var(--border);background:transparent;color:var(--text2);transition:all .15s;
+}
+.tBtn:hover{border-color:var(--accent);color:var(--accent);}
+.tBtn.on{background:var(--accent)22;border-color:var(--accent);color:var(--accent);box-shadow:0 0 8px var(--accent)44;}
+#bpmBox{display:flex;align-items:center;gap:6px;}
+#bpmNum{font-size:20px;color:#fff;font-weight:bold;min-width:44px;text-align:center;}
+.bpmArrow{padding:2px 6px;font-size:13px;cursor:pointer;color:var(--text2);border:none;background:none;}
+.bpmArrow:hover{color:var(--accent);}
+#bpmLbl{font-size:9px;color:var(--text2);letter-spacing:1px;}
+#beatRow{display:flex;gap:3px;align-items:center;}
+.bd{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .05s;}
+.bd.on{background:var(--accent);box-shadow:0 0 6px var(--accent);}
+.bd.strong{width:10px;height:10px;}
+.bd.strong.on{background:#fff;box-shadow:0 0 8px #fff;}
+
+/* ── MAIN LAYOUT ── */
+#main{flex:1;display:flex;overflow:hidden;}
+
+/* ── TRACKS PANEL ── */
+#tracks{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
+.track{
+  padding:10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;
+  display:flex;flex-direction:column;gap:6px;position:relative;
+}
+.track:hover{background:var(--surface2);}
+.track.active{background:var(--surface2);border-left:3px solid var(--accent);}
+.track-top{display:flex;align-items:center;gap:6px;}
+.track-num{
+  width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:bold;flex-shrink:0;
+}
+.track-name{font-size:11px;color:var(--text);flex:1;}
+.track-icons{display:flex;gap:4px;}
+.iBtn{
+  width:20px;height:20px;border-radius:3px;border:1px solid var(--border);background:transparent;
+  font-size:9px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;
+}
+.iBtn:hover,.iBtn.on{color:#fff;}
+.iBtn.mute.on{background:#ff3d7133;border-color:var(--red);color:var(--red);}
+.iBtn.solo.on{background:#ff910033;border-color:var(--orange);color:var(--orange);}
+.iBtn.rec.on{background:#ff3d7133;border-color:var(--red);color:var(--red);}
+.waveform{height:28px;border-radius:2px;background:var(--bg);overflow:hidden;}
+.waveform canvas{width:100%;height:100%;}
+.track-vol{display:flex;align-items:center;gap:4px;}
+.track-vol label{font-size:8px;color:var(--text2);}
+.mini-slider{-webkit-appearance:none;flex:1;height:2px;border-radius:1px;background:linear-gradient(to right,var(--accent),var(--accent2));outline:none;cursor:pointer;}
+.mini-slider::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;background:#fff;border-radius:50%;}
+.loop-info{font-size:8px;color:var(--text2);display:flex;justify-content:space-between;}
+.has-loop{color:var(--green) !important;}
+
+/* ── RIGHT: SYNTH + KEYBOARD ── */
+#right{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── FX PANEL ── */
+#fx{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:8px 14px;display:flex;gap:16px;align-items:center;flex-shrink:0;flex-wrap:wrap;
+}
+.fx-group{display:flex;flex-direction:column;gap:4px;align-items:center;min-width:52px;}
+.fx-group label{font-size:8px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;}
+.knob-wrap{position:relative;width:36px;height:36px;cursor:pointer;}
+.knob-wrap canvas{display:block;}
+.knob-val{font-size:8px;color:var(--accent);text-align:center;margin-top:1px;}
+.fx-divider{width:1px;height:50px;background:var(--border);margin:0 4px;}
+
+/* ENV */
+.env-row{display:flex;gap:10px;align-items:flex-end;}
+.env-item{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.env-item label{font-size:8px;color:var(--text2);}
+.env-slider{-webkit-appearance:none;writing-mode:vertical-lr;direction:rtl;width:20px;height:40px;background:transparent;outline:none;cursor:pointer;}
+.env-slider::-webkit-slider-runnable-track{width:3px;background:var(--border);border-radius:2px;}
+.env-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--accent2);border-radius:50%;margin-left:-5px;}
+
+/* WAVE SELECT */
+#waveSelect{display:flex;gap:4px;}
+.wBtn{padding:3px 7px;font-size:9px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;border-radius:2px;font-family:'Courier New',monospace;}
+.wBtn.on{background:var(--accent)22;border-color:var(--accent);color:var(--accent);}
+
+/* ── KEYBOARD AREA ── */
+#kbArea{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#gridTitle{font-size:9px;color:var(--text2);letter-spacing:2px;padding:5px 14px;flex-shrink:0;}
+#gridWrap{flex:1;position:relative;margin:0 10px 8px;}
+#noteGrid{
+  position:absolute;inset:0;
+  display:grid;
+  grid-template-columns:repeat(12,1fr);
+  grid-template-rows:repeat(4,1fr);
+  border:1px solid var(--border);border-radius:4px;overflow:hidden;
+}
+.cell{
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  padding-bottom:2px;font-size:6px;cursor:pointer;
+  border:1px solid #ffffff05;color:#ffffff20;position:relative;transition:background .06s;
+}
+.cell.natural{background:var(--cell-n);}
+.cell.sharp{background:var(--cell-s);}
+.cell .kh{font-size:7px;color:#ffffff15;position:absolute;top:2px;right:3px;}
+.cell.flash{background:var(--accent)55 !important;color:#fff !important;box-shadow:inset 0 0 12px var(--accent)88;}
+#pathCanvas{position:absolute;inset:0;pointer-events:none;}
+
+/* ── OVERLAY ── */
+#overlay{
+  position:fixed;inset:0;background:rgba(0,0,12,.97);z-index:200;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+}
+#overlay h1{font-size:1.8em;color:var(--accent);letter-spacing:8px;text-shadow:0 0 30px var(--accent);}
+#overlay p{font-size:11px;color:var(--text2);text-align:center;max-width:380px;line-height:1.8;}
+#overlay .key-legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 20px;font-size:10px;color:var(--text2);}
+#overlay .key-legend span{color:var(--accent);}
+#goBtn{padding:10px 32px;font-size:14px;background:transparent;border:2px solid var(--accent);color:var(--accent);cursor:pointer;letter-spacing:4px;font-family:'Courier New',monospace;margin-top:6px;}
+#goBtn:hover{background:var(--accent);color:#000;}
+</style>
+</head>
+<body>
+
+<!-- OVERLAY -->
+<div id="overlay">
+  <h1>COSMIC SYNTH</h1>
+  <p>Sintetizador / Rhythm Machine profesional<br>4 loops independientes · Efectos por pista · Teclado cromático</p>
+  <div class="key-legend">
+    <div><span>1234567890'¿</span> Octava 5</div>
+    <div><span>qwertyuiop´+</span> Octava 4</div>
+    <div><span>asdfghjklñ{}</span> Octava 3</div>
+    <div><span>zxcvbnm,.-</span> Octava 2</div>
+  </div>
+  <button id="goBtn">[ INICIAR ]</button>
+</div>
+
+<!-- NAV -->
+<div id="nav">
+  <div id="logo">⬡ COSMIC SYNTH</div>
+  <div id="transport">
+    <button class="tBtn" id="btnRec" onclick="toggleRec()">● REC</button>
+    <button class="tBtn" id="btnPlay" onclick="togglePlay()">▶ PLAY</button>
+    <button class="tBtn" onclick="stopAll()">■ STOP</button>
+    <div style="width:1px;height:20px;background:var(--border);margin:0 4px;"></div>
+    <div id="bpmBox">
+      <button class="bpmArrow" onclick="changeBPM(-1)">▼</button>
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <div id="bpmNum">120</div>
+        <div id="bpmLbl">BPM</div>
+      </div>
+      <button class="bpmArrow" onclick="changeBPM(1)">▲</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:2px;align-items:center;">
+      <div id="beatRow">
+        <div class="bd strong" id="bd0"></div>
+        <div class="bd" id="bd1"></div>
+        <div class="bd" id="bd2"></div>
+        <div class="bd" id="bd3"></div>
+        <div class="bd" id="bd4"></div>
+        <div class="bd" id="bd5"></div>
+        <div class="bd" id="bd6"></div>
+        <div class="bd" id="bd7"></div>
+      </div>
+      <div id="loopPos" style="font-size:8px;color:var(--text2);text-align:center;">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- TRACKS -->
+  <div id="tracks"></div>
+
+  <!-- RIGHT -->
+  <div id="right">
+
+    <!-- FX -->
+    <div id="fx">
+      <div class="fx-group" style="min-width:80px;">
+        <label>Forma de onda</label>
+        <div id="waveSelect">
+          <button class="wBtn on" onclick="setWave('sawtooth')">SAW</button>
+          <button class="wBtn" onclick="setWave('square')">SQR</button>
+          <button class="wBtn" onclick="setWave('sine')">SIN</button>
+          <button class="wBtn" onclick="setWave('triangle')">TRI</button>
+        </div>
+      </div>
+      <div class="fx-divider"></div>
+      <div class="fx-group">
+        <label>ADSR</label>
+        <div class="env-row">
+          <div class="env-item"><label>A</label><input class="env-slider" type="range" min="1" max="200" value="4" id="envA" oninput="setEnv()"></div>
+          <div class="env-item"><label>D</label><input class="env-slider" type="range" min="10" max="500" value="80" id="envD" oninput="setEnv()"></div>
+          <div class="env-item"><label>S</label><input class="env-slider" type="range" min="0" max="100" value="70" id="envS" oninput="setEnv()"></div>
+          <div class="env-item"><label>R</label><input class="env-slider" type="range" min="10" max="800" value="120" id="envR" oninput="setEnv()"></div>
+        </div>
+      </div>
+      <div class="fx-divider"></div>
+      <div class="fx-group"><label>FILTER</label><canvas class="knob-wrap" id="knobFilter" width="36" height="36"></canvas><div class="knob-val" id="valFilter">8k</div></div>
+      <div class="fx-group"><label>RESO</label><canvas class="knob-wrap" id="knobReso" width="36" height="36"></canvas><div class="knob-val" id="valReso">0</div></div>
+      <div class="fx-divider"></div>
+      <div class="fx-group"><label>REVERB</label><canvas class="knob-wrap" id="knobReverb" width="36" height="36"></canvas><div class="knob-val" id="valReverb">30%</div></div>
+      <div class="fx-group"><label>DELAY</label><canvas class="knob-wrap" id="knobDelay" width="36" height="36"></canvas><div class="knob-val" id="valDelay">0%</div></div>
+      <div class="fx-group"><label>DIST</label><canvas class="knob-wrap" id="knobDist" width="36" height="36"></canvas><div class="knob-val" id="valDist">0%</div></div>
+      <div class="fx-group"><label>CHORUS</label><canvas class="knob-wrap" id="knobChorus" width="36" height="36"></canvas><div class="knob-val" id="valChorus">0%</div></div>
+      <div class="fx-divider"></div>
+      <div class="fx-group"><label>OCTAVA</label>
+        <div style="display:flex;gap:4px;align-items:center;margin-top:6px;">
+          <button class="bpmArrow" style="font-size:11px;" onclick="changeOct(-1)">▼</button>
+          <span id="octVal" style="font-size:14px;color:#fff;min-width:16px;text-align:center;">0</span>
+          <button class="bpmArrow" style="font-size:11px;" onclick="changeOct(1)">▲</button>
+        </div>
+        <div class="knob-val" id="octLbl">Normal</div>
+      </div>
+      <div class="fx-group"><label>BARS</label>
+        <div style="display:flex;gap:4px;align-items:center;margin-top:6px;">
+          <button class="bpmArrow" style="font-size:11px;" onclick="changeBars(-1)">▼</button>
+          <span id="barsVal" style="font-size:14px;color:#fff;min-width:16px;text-align:center;">2</span>
+          <button class="bpmArrow" style="font-size:11px;" onclick="changeBars(1)">▲</button>
+        </div>
+        <div class="knob-val" id="durLbl">3.8s</div>
+      </div>
+    </div>
+
+    <!-- KEYBOARD -->
+    <div id="kbArea">
+      <div id="gridTitle">MATRIZ CROMÁTICA — teclado o click · tecla visible en cada celda</div>
+      <div id="gridWrap">
+        <div id="noteGrid"></div>
+        <canvas id="pathCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════
+const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const SHARPS=new Set([1,3,6,8,10]);
+const BASE_OCTS=[5,4,3,2];
+const ROWS=4,COLS=12;
+const KB_ROWS=[
+  "1234567890'¿".split(''),
+  'qwertyuiop´+'.split(''),
+  'asdfghjklñ{}'.split(''),
+  'zxcvbnm,.-__'.split('')
+];
+const KB_MAP={};
+KB_ROWS.forEach((row,r)=>row.forEach((k,c)=>{if(k!=='_')KB_MAP[k]=[r,c];}));
+
+const TRACK_COLORS=['#00e5ff','#7c4dff','#00e676','#ff9100'];
+const TRACK_NAMES=['TRACK 1','TRACK 2','TRACK 3','TRACK 4'];
+const NUM_TRACKS=4;
+const POOL=8;
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let audioCtx, reverbIR;
+let activeTrk=0; // which track is selected
+let tempo=120, octShift=0, numBars=2;
+let isPlaying=false, globalBeat=0, metroTimer=null;
+let particles=[], bgT=0;
+
+// Per-track state
+const tracks=Array.from({length:NUM_TRACKS},(_,i)=>({
+  id:i, color:TRACK_COLORS[i], name:TRACK_NAMES[i],
+  // audio nodes (built after audioCtx init)
+  voices:[], activeOscs:{},
+  masterGain:null, distNode:null, filterNode:null,
+  reverbGain:null, dryGain:null, delayNode:null, delayGain:null,
+  chorusOsc:null, chorusDly:null, chorusGain:null,
+  // settings
+  wave:'sawtooth', vol:0.7, muted:false, soloed:false,
+  fx:{filter:8000,reso:0,reverb:30,delay:0,dist:0,chorus:0},
+  env:{a:4,d:80,s:70,r:120},
+  // recording
+  isRec:false, loopEvents:[], loopLen:0,
+  recStartBeat:0, pendingNotes:{},
+  // playback
+  playBeat:0,
+  // waveform canvas
+  waveCanvas:null, waveCtx:null,
+}));
+
+// ══════════════════════════════════════════
+//  AUDIO INIT
+// ══════════════════════════════════════════
+function initAudio(){
+  audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  // shared reverb impulse
+  const rLen=audioCtx.sampleRate*3;
+  const rBuf=audioCtx.createBuffer(2,rLen,audioCtx.sampleRate);
+  for(let c=0;c<2;c++){const d=rBuf.getChannelData(c);for(let i=0;i<rLen;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/rLen,1.5);}
+  reverbIR=rBuf;
+  tracks.forEach(buildTrackAudio);
+}
+
+function buildTrackAudio(t){
+  const ac=audioCtx;
+  t.masterGain=ac.createGain(); t.masterGain.gain.value=t.vol;
+  t.masterGain.connect(ac.destination);
+
+  // filter
+  t.filterNode=ac.createBiquadFilter(); t.filterNode.type='lowpass';
+  t.filterNode.frequency.value=t.fx.filter; t.filterNode.Q.value=t.fx.reso;
+  t.filterNode.connect(t.masterGain);
+
+  // distortion
+  t.distNode=ac.createWaveShaper(); t.distNode.oversample='4x';
+  t.distNode.curve=makeDistCurve(0); t.distNode.connect(t.filterNode);
+
+  // dry
+  t.dryGain=ac.createGain(); t.dryGain.gain.value=1; t.dryGain.connect(t.distNode);
+
+  // reverb
+  const rev=ac.createConvolver(); rev.buffer=reverbIR;
+  t.reverbGain=ac.createGain(); t.reverbGain.gain.value=t.fx.reverb/100;
+  rev.connect(t.reverbGain); t.reverbGain.connect(t.masterGain);
+  t._revNode=rev;
+
+  // delay
+  t.delayNode=ac.createDelay(1.0); t.delayNode.delayTime.value=60/tempo*0.5;
+  t.delayGain=ac.createGain(); t.delayGain.gain.value=0;
+  const fb=ac.createGain(); fb.gain.value=0.35;
+  t.delayNode.connect(fb); fb.connect(t.delayNode);
+  t.delayNode.connect(t.delayGain); t.delayGain.connect(t.masterGain);
+
+  // chorus
+  t.chorusDly=ac.createDelay(0.05); t.chorusDly.delayTime.value=0.02;
+  t.chorusOsc=ac.createOscillator(); t.chorusOsc.frequency.value=0.5;
+  t.chorusGain=ac.createGain(); t.chorusGain.gain.value=0;
+  t.chorusOsc.connect(t.chorusGain); t.chorusGain.connect(t.chorusDly.delayTime);
+  t.chorusOsc.start();
+  t.chorusDly.connect(t.masterGain);
+
+  // voice pool
+  t.voices=[];
+  for(let i=0;i<POOL;i++){
+    const osc=ac.createOscillator(), g=ac.createGain();
+    g.gain.value=0; osc.type=t.wave;
+    osc.connect(g);
+    g.connect(t.dryGain); g.connect(t._revNode); g.connect(t.chorusDly); g.connect(t.delayNode);
+    osc.start(); t.voices.push({osc,g,key:null});
+  }
+}
+
+function makeDistCurve(a){
+  const n=256,k=a*400,c=new Float32Array(n);
+  for(let i=0;i<n;i++){const x=(i*2)/n-1;c[i]=k?((Math.PI+k)*x)/(Math.PI+k*Math.abs(x)):x;}
+  return c;
+}
+
+function midiFreq(oct,ni){return 440*Math.pow(2,((oct+1)*12+ni-69)/12);}
+
+// ══════════════════════════════════════════
+//  PLAY / STOP NOTES
+// ══════════════════════════════════════════
+function playNote(t,r,c){
+  const key=r+','+c; if(t.activeOscs[key]||t.muted)return;
+  const oct=BASE_OCTS[r]+octShift;
+  const freq=midiFreq(oct,c);
+  const v=t.voices.find(v=>v.key===null)||t.voices[0];
+  if(v.key) delete t.activeOscs[v.key];
+  v.key=key; v.osc.type=t.wave;
+  v.osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
+  const now=audioCtx.currentTime;
+  const s=t.env.s/100, a=t.env.a/1000, d=t.env.d/1000;
+  v.g.gain.cancelScheduledValues(now);
+  v.g.gain.setValueAtTime(0,now);
+  v.g.gain.linearRampToValueAtTime(0.5,now+a);
+  v.g.gain.linearRampToValueAtTime(0.5*s,now+a+d);
+  t.activeOscs[key]=v;
+  flashCell(r,c,t.color);
+  spawnParticle(r,c,t.color);
+  updateWave(t);
+}
+
+function stopNote(t,r,c){
+  const key=r+','+c, v=t.activeOscs[key]; if(!v)return;
+  const now=audioCtx.currentTime;
+  v.g.gain.cancelScheduledValues(now);
+  v.g.gain.setTargetAtTime(0,now,t.env.r/4000);
+  v.key=null; delete t.activeOscs[key];
+}
+
+// ══════════════════════════════════════════
+//  RECORDING
+// ══════════════════════════════════════════
+function noteOn(r,c){
+  const t=tracks[activeTrk];
+  playNote(t,r,c);
+  if(t.isRec){
+    const key=r+','+c;
+    t.pendingNotes[key]={beat:globalBeat-t.recStartBeat,r,c,tStart:globalBeat};
+  }
+}
+function noteOff(r,c){
+  const t=tracks[activeTrk];
+  stopNote(t,r,c);
+  if(t.isRec){
+    const key=r+','+c, p=t.pendingNotes[key];
+    if(p){
+      const dur=Math.max(1,globalBeat-p.tStart);
+      t.loopEvents.push({beat:((p.beat%t.loopLen)+t.loopLen)%t.loopLen,r:p.r,c:p.c,dur});
+      delete t.pendingNotes[key];
+    }
+  }
+}
+
+// ══════════════════════════════════════════
+//  METRO + PLAYBACK
+// ══════════════════════════════════════════
+function startMetro(){clearTimeout(metroTimer);globalBeat=0;tracks.forEach(t=>t.playBeat=0);tick();}
+function stopMetro(){clearTimeout(metroTimer);isPlaying=false;}
+
+function tick(){
+  if(!isPlaying)return;
+  const ms=60/tempo*1000/2;
+  const bi=globalBeat%8;
+  document.querySelectorAll('.bd').forEach((b,i)=>b.classList.toggle('on',i===bi));
+
+  // auto-stop rec after loopLen
+  tracks.forEach(t=>{
+    if(t.isRec&&t.loopLen>0&&(globalBeat-t.recStartBeat)>=t.loopLen){
+      t.isRec=false;
+      renderTrackUI(t);
+    }
+  });
+
+  // loop playback
+  tracks.forEach(t=>{
+    if(!t.isRec&&t.loopLen>0&&t.loopEvents.length>0&&!t.muted){
+      const pb=t.playBeat%t.loopLen;
+      t.loopEvents.filter(e=>e.beat===pb).forEach(e=>{
+        playNote(t,e.r,e.c);
+        setTimeout(()=>stopNote(t,e.r,e.c),e.dur*ms*0.9);
+      });
+      t.playBeat++;
+    }
+  });
+
+  // loop position display
+  const at=tracks[activeTrk];
+  if(at.loopLen>0){
+    const pb=at.playBeat%at.loopLen;
+    document.getElementById('loopPos').textContent=`${pb+1}/${at.loopLen}`;
+  }
+
+  globalBeat++;
+  metroTimer=setTimeout(tick,ms);
+}
+
+// ══════════════════════════════════════════
+//  TRANSPORT BUTTONS
+// ══════════════════════════════════════════
+function toggleRec(){
+  const t=tracks[activeTrk];
+  t.isRec=!t.isRec;
+  if(t.isRec){
+    t.loopEvents=[]; t.pendingNotes={};
+    t.loopLen=numBars*8; t.recStartBeat=globalBeat;
+    if(!isPlaying){isPlaying=true;startMetro();}
+  }
+  document.getElementById('btnRec').classList.toggle('on',t.isRec);
+  renderTrackUI(t);
+}
+
+function togglePlay(){
+  isPlaying=!isPlaying;
+  document.getElementById('btnPlay').classList.toggle('on',isPlaying);
+  if(isPlaying) startMetro(); else stopMetro();
+}
+
+function stopAll(){
+  isPlaying=false; clearTimeout(metroTimer);
+  document.getElementById('btnPlay').classList.remove('on');
+  document.getElementById('btnRec').classList.remove('on');
+  tracks.forEach(t=>{
+    t.isRec=false; t.playBeat=0;
+    Object.keys(t.activeOscs).forEach(k=>{
+      const [r,c]=k.split(',').map(Number); stopNote(t,r,c);
+    });
+  });
+  document.querySelectorAll('.bd').forEach(b=>b.classList.remove('on'));
+  document.getElementById('loopPos').textContent='—';
+}
+
+function changeBPM(d){
+  tempo=Math.max(40,Math.min(240,tempo+d));
+  document.getElementById('bpmNum').textContent=tempo;
+  tracks.forEach(t=>{if(t.delayNode)t.delayNode.delayTime.value=60/tempo*.5;});
+  updateDurLbl();
+  if(isPlaying){clearTimeout(metroTimer);tick();}
+}
+
+function changeBars(d){numBars=Math.max(1,Math.min(16,numBars+d));document.getElementById('barsVal').textContent=numBars;updateDurLbl();}
+function changeOct(d){octShift=Math.max(-2,Math.min(2,octShift+d));document.getElementById('octVal').textContent=octShift>0?'+'+octShift:octShift;document.getElementById('octLbl').textContent=octShift===0?'Normal':octShift>0?'Agudo':'Grave';}
+function updateDurLbl(){const s=(numBars*8)/(tempo*2)*60;document.getElementById('durLbl').textContent=s.toFixed(1)+'s';}
+
+// ══════════════════════════════════════════
+//  FX CONTROLS
+// ══════════════════════════════════════════
+function setWave(w){
+  const t=tracks[activeTrk]; t.wave=w;
+  t.voices.forEach(v=>v.osc.type=w);
+  document.querySelectorAll('.wBtn').forEach(b=>b.classList.toggle('on',b.textContent.toLowerCase().startsWith(w.slice(0,3))));
+}
+
+function setEnv(){
+  const t=tracks[activeTrk];
+  t.env.a=+document.getElementById('envA').value;
+  t.env.d=+document.getElementById('envD').value;
+  t.env.s=+document.getElementById('envS').value;
+  t.env.r=+document.getElementById('envR').value;
+}
+
+function applyFX(t){
+  if(!t.filterNode)return;
+  t.filterNode.frequency.setTargetAtTime(t.fx.filter,audioCtx.currentTime,.05);
+  t.filterNode.Q.setTargetAtTime(t.fx.reso,audioCtx.currentTime,.05);
+  t.distNode.curve=makeDistCurve(t.fx.dist/100);
+  t.reverbGain.gain.setTargetAtTime(t.fx.reverb/100,audioCtx.currentTime,.05);
+  t.delayGain.gain.setTargetAtTime(t.fx.delay/100*.6,audioCtx.currentTime,.05);
+  t.chorusGain.gain.value=t.fx.chorus/100*.005;
+}
+
+// ══════════════════════════════════════════
+//  KNOBS
+// ══════════════════════════════════════════
+const knobDefs={
+  knobFilter:{min:200,max:18000,key:'filter',log:true,fmt:v=>v>=1000?(v/1000).toFixed(1)+'k':Math.round(v)+''},
+  knobReso:  {min:0,max:20,key:'reso',fmt:v=>v.toFixed(1)},
+  knobReverb:{min:0,max:100,key:'reverb',fmt:v=>Math.round(v)+'%'},
+  knobDelay: {min:0,max:100,key:'delay',fmt:v=>Math.round(v)+'%'},
+  knobDist:  {min:0,max:100,key:'dist',fmt:v=>Math.round(v)+'%'},
+  knobChorus:{min:0,max:100,key:'chorus',fmt:v=>Math.round(v)+'%'},
+};
+
+function drawKnob(id,norm,color){
+  const cv=document.getElementById(id); if(!cv)return;
+  const c=cv.getContext('2d'),W=36,H=36,cx=W/2,cy=H/2,R=13;
+  c.clearRect(0,0,W,H);
+  // track
+  c.beginPath();c.arc(cx,cy,R,0.75*Math.PI,2.25*Math.PI);
+  c.strokeStyle='#1e2040';c.lineWidth=3;c.stroke();
+  // fill
+  const end=0.75*Math.PI+norm*1.5*Math.PI;
+  c.beginPath();c.arc(cx,cy,R,0.75*Math.PI,end);
+  c.strokeStyle=color||'#00e5ff';c.lineWidth=3;c.stroke();
+  // dot
+  const a=end; c.beginPath();
+  c.arc(cx+Math.cos(a)*R,cy+Math.sin(a)*R,3,0,Math.PI*2);
+  c.fillStyle='#fff';c.fill();
+}
+
+function initKnobs(){
+  Object.entries(knobDefs).forEach(([id,def])=>{
+    const cv=document.getElementById(id);
+    const t=tracks[activeTrk];
+    let val=t.fx[def.key];
+    let norm=def.log?Math.log(val/def.min)/Math.log(def.max/def.min):(val-def.min)/(def.max-def.min);
+    drawKnob(id,norm,tracks[activeTrk].color);
+    document.getElementById('val'+id.replace('knob','').charAt(0).toUpperCase()+id.replace('knob','').slice(1)).textContent=def.fmt(val);
+
+    let startY,startNorm;
+    cv.addEventListener('mousedown',e=>{startY=e.clientY;startNorm=norm;e.preventDefault();
+      const mm=e2=>{
+        norm=Math.max(0,Math.min(1,startNorm-(e2.clientY-startY)/120));
+        val=def.log?def.min*Math.pow(def.max/def.min,norm):def.min+norm*(def.max-def.min);
+        tracks[activeTrk].fx[def.key]=val;
+        drawKnob(id,norm,tracks[activeTrk].color);
+        document.getElementById('val'+id.replace('knob','').charAt(0).toUpperCase()+id.replace('knob','').slice(1)).textContent=def.fmt(val);
+        applyFX(tracks[activeTrk]);
+      };
+      const mu=()=>{window.removeEventListener('mousemove',mm);window.removeEventListener('mouseup',mu);};
+      window.addEventListener('mousemove',mm);window.addEventListener('mouseup',mu);
+    });
+  });
+}
+
+function refreshKnobs(){
+  const t=tracks[activeTrk];
+  Object.entries(knobDefs).forEach(([id,def])=>{
+    const val=t.fx[def.key];
+    const norm=def.log?Math.log(val/def.min)/Math.log(def.max/def.min):(val-def.min)/(def.max-def.min);
+    drawKnob(id,norm,t.color);
+    const labelId='val'+id.replace('knob','').charAt(0).toUpperCase()+id.replace('knob','').slice(1);
+    const el=document.getElementById(labelId); if(el)el.textContent=def.fmt(val);
+  });
+  // wave buttons
+  document.querySelectorAll('.wBtn').forEach(b=>b.classList.toggle('on',b.textContent.toLowerCase().startsWith(t.wave.slice(0,3))));
+  // env
+  document.getElementById('envA').value=t.env.a;
+  document.getElementById('envD').value=t.env.d;
+  document.getElementById('envS').value=t.env.s;
+  document.getElementById('envR').value=t.env.r;
+}
+
+// ══════════════════════════════════════════
+//  TRACK UI
+// ══════════════════════════════════════════
+function buildTracksUI(){
+  const panel=document.getElementById('tracks');
+  panel.innerHTML='';
+  tracks.forEach(t=>{
+    const div=document.createElement('div');
+    div.className='track'+(t.id===activeTrk?' active':'');
+    div.id='track'+t.id;
+    div.onclick=e=>{if(!e.target.closest('.iBtn')&&!e.target.closest('.mini-slider')){selectTrack(t.id);}};
+    div.innerHTML=`
+      <div class="track-top">
+        <div class="track-num" style="background:${t.color}22;border:1px solid ${t.color};color:${t.color}">${t.id+1}</div>
+        <div class="track-name">${t.name}</div>
+        <div class="track-icons">
+          <button class="iBtn rec ${t.isRec?'on':''}" title="REC" onclick="trackRec(${t.id})">●</button>
+          <button class="iBtn mute ${t.muted?'on':''}" title="MUTE" onclick="trackMute(${t.id})">M</button>
+          <button class="iBtn solo ${t.soloed?'on':''}" title="SOLO" onclick="trackSolo(${t.id})">S</button>
+          <button class="iBtn" title="CLEAR" onclick="trackClear(${t.id})" style="color:var(--red)">✕</button>
+        </div>
+      </div>
+      <div class="waveform"><canvas id="wv${t.id}" height="28"></canvas></div>
+      <div class="track-vol">
+        <label>VOL</label>
+        <input class="mini-slider" type="range" min="0" max="100" value="${Math.round(t.vol*100)}"
+          oninput="setTrackVol(${t.id},this.value)">
+      </div>
+      <div class="loop-info">
+        <span id="li${t.id}" class="${t.loopEvents.length?'has-loop':''}">${t.loopEvents.length?'● LOOP: '+t.loopLen+' steps':'○ vacío'}</span>
+        <span style="color:${t.color}">${t.name.split(' ')[1]}</span>
+      </div>
+    `;
+    panel.appendChild(div);
+    t.waveCanvas=document.getElementById('wv'+t.id);
+    t.waveCtx=t.waveCanvas.getContext('2d');
+    t.waveCanvas.width=t.waveCanvas.offsetWidth||180;
+  });
+}
+
+function renderTrackUI(t){
+  const div=document.getElementById('track'+t.id); if(!div)return;
+  div.querySelector('.iBtn.rec').classList.toggle('on',t.isRec);
+  div.querySelector('.iBtn.mute').classList.toggle('on',t.muted);
+  div.querySelector('.iBtn.solo').classList.toggle('on',t.soloed);
+  const li=document.getElementById('li'+t.id);
+  li.textContent=t.loopEvents.length?'● LOOP: '+t.loopLen+' steps':'○ vacío';
+  li.className=t.loopEvents.length?'has-loop':'';
+}
+
+function selectTrack(id){
+  activeTrk=id;
+  document.querySelectorAll('.track').forEach((d,i)=>d.classList.toggle('active',i===id));
+  document.getElementById('btnRec').classList.toggle('on',tracks[id].isRec);
+  refreshKnobs();
+}
+
+function trackRec(id){selectTrack(id);toggleRec();}
+function trackMute(id){tracks[id].muted=!tracks[id].muted;renderTrackUI(tracks[id]);}
+function trackSolo(id){
+  tracks[id].soloed=!tracks[id].soloed;
+  const any=tracks.some(t=>t.soloed);
+  tracks.forEach(t=>{t.muted=any&&!t.soloed;if(t.id===id)t.muted=false;});
+  tracks.forEach(t=>renderTrackUI(t));
+}
+function trackClear(id){tracks[id].loopEvents=[];tracks[id].loopLen=0;tracks[id].playBeat=0;renderTrackUI(tracks[id]);}
+function setTrackVol(id,v){tracks[id].vol=v/100;if(tracks[id].masterGain)tracks[id].masterGain.gain.setTargetAtTime(v/100,audioCtx.currentTime,.05);}
+
+// ══════════════════════════════════════════
+//  WAVEFORM VISUALIZER
+// ══════════════════════════════════════════
+function updateWave(t){
+  if(!t.waveCtx)return;
+  const c=t.waveCtx, W=t.waveCanvas.width, H=28;
+  c.fillStyle='#08090f'; c.fillRect(0,0,W,H);
+  c.beginPath(); c.strokeStyle=t.color+'99'; c.lineWidth=1.5;
+  for(let x=0;x<W;x++){
+    const phase=x/W*Math.PI*8+bgT*4;
+    const amp=H/2*(t.vol);
+    const y=H/2+Math.sin(phase)*amp*0.7;
+    x===0?c.moveTo(x,y):c.lineTo(x,y);
+  }
+  c.stroke();
+}
+
+// ══════════════════════════════════════════
+//  NOTE GRID
+// ══════════════════════════════════════════
+let cells=[];
+function buildGrid(){
+  const ng=document.getElementById('noteGrid'); ng.innerHTML=''; cells=[];
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const d=document.createElement('div');
+      d.className='cell '+(SHARPS.has(c)?'sharp':'natural');
+      d.dataset.r=r; d.dataset.c=c;
+      const kh=document.createElement('span'); kh.className='kh'; kh.textContent=KB_ROWS[r][c]||'';
+      const nm=document.createElement('span'); nm.textContent=NOTE_NAMES[c]+(BASE_OCTS[r]+octShift);
+      d.appendChild(kh); d.appendChild(nm);
+      ng.appendChild(d); cells.push(d);
+    }
+  }
+  ng.onmousedown=e=>{const d=e.target.closest('.cell');if(d)noteOn(+d.dataset.r,+d.dataset.c);};
+  ng.onmouseup=e=>{const d=e.target.closest('.cell');if(d)noteOff(+d.dataset.r,+d.dataset.c);};
+  sizePathCanvas();
+}
+
+function flashCell(r,c,color){
+  const d=cells[r*COLS+c]; if(!d)return;
+  d.classList.add('flash');
+  d.style.setProperty('--accent',color);
+  setTimeout(()=>d.classList.remove('flash'),120);
+}
+
+// ══════════════════════════════════════════
+//  PATH CANVAS
+// ══════════════════════════════════════════
+const pathCanvas=document.getElementById('pathCanvas');
+const pCtx=pathCanvas.getContext('2d');
+function sizePathCanvas(){
+  const gw=document.getElementById('gridWrap');
+  pathCanvas.width=gw.offsetWidth; pathCanvas.height=gw.offsetHeight;
+}
+
+// ══════════════════════════════════════════
+//  PARTICLES + BG
+// ══════════════════════════════════════════
+const stars=Array.from({length:140},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.2,b:Math.random()}));
+let bgCanvas2=document.createElement('canvas');
+bgCanvas2.style.cssText='position:fixed;inset:0;z-index:-1;pointer-events:none;';
+document.body.appendChild(bgCanvas2);
+const bgC=bgCanvas2.getContext('2d');
+function sizeBG(){bgCanvas2.width=window.innerWidth;bgCanvas2.height=window.innerHeight;}
+sizeBG(); window.addEventListener('resize',()=>{sizeBG();sizePathCanvas();});
+
+function animBG(){
+  requestAnimationFrame(animBG); bgT+=.008;
+  const W=bgCanvas2.width,H=bgCanvas2.height;
+  bgC.fillStyle='rgba(8,9,15,.25)'; bgC.fillRect(0,0,W,H);
+  stars.forEach(s=>{
+    const tw=.2+.8*Math.abs(Math.sin(bgT+s.b*6));
+    bgC.beginPath(); bgC.arc(s.x*W,s.y*H,s.r,0,Math.PI*2);
+    bgC.fillStyle=`rgba(160,190,255,${tw*.6})`; bgC.fill();
+  });
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i]; p.x+=p.vx; p.y+=p.vy; p.vx*=.93; p.vy*=.93; p.life-=.02;
+    if(p.life<=0){particles.splice(i,1);continue;}
+    bgC.beginPath(); bgC.arc(p.x,p.y,3*p.life,0,Math.PI*2);
+    bgC.fillStyle=p.color+Math.floor(p.life*180).toString(16).padStart(2,'0'); bgC.fill();
+  }
+  // waveforms
+  tracks.forEach(t=>{ if(Object.keys(t.activeOscs).length) updateWave(t); });
+}
+
+function spawnParticle(r,c,color){
+  const gw=document.getElementById('gridWrap'); if(!gw)return;
+  const rect=gw.getBoundingClientRect();
+  const cw=rect.width/COLS, rh=rect.height/ROWS;
+  const x=rect.left+c*cw+cw/2, y=rect.top+r*rh+rh/2;
+  for(let i=0;i<8;i++){
+    const a=Math.random()*Math.PI*2,s=1+Math.random()*4;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color});
+  }
+}
+
+// ══════════════════════════════════════════
+//  KEYBOARD
+// ══════════════════════════════════════════
+const held=new Set();
+window.addEventListener('keydown',e=>{
+  if(e.repeat||!audioCtx)return;
+  const m=KB_MAP[e.key]; if(m){held.add(e.key);noteOn(m[0],m[1]);}
+});
+window.addEventListener('keyup',e=>{
+  const m=KB_MAP[e.key]; if(m){held.delete(e.key);noteOff(m[0],m[1]);}
+});
+
+// ══════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════
+document.getElementById('goBtn').onclick=()=>{
+  document.getElementById('overlay').style.display='none';
+  initAudio(); buildGrid(); buildTracksUI(); initKnobs(); animBG(); updateDurLbl();
+};
+</script>
+</body>
+</html>
